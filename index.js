@@ -15,7 +15,30 @@ app.get('/categories', (req, res) => {
         res.send(categories);
     }
     catch (e){
-        res.status(500).send(e);
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
+app.post('/categories', (req, res) => {
+
+    const {name} = req.body;
+
+    try{
+        if(name === "") return res.sendStatus(400);
+
+        const categories = database.query("SELECT * FROM categories");
+
+        const validation = categories.find(categorie => {
+            categorie.name === name;
+        })
+        if(validation) return send.sendStatus(409);
+
+        res.status(201);
+    }
+    catch (e){
+        res.sendStatus(500);
+        console.log(e);
     }
 })
 
