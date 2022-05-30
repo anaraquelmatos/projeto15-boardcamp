@@ -52,6 +52,29 @@ app.get('/games', async (req, res) => {
     }
 })
 
+app.post('/games', async (req, res) => {
+
+    const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
+
+    try {
+        if (name === "") return res.sendStatus(400);
+
+        const categories = await database.query(`SELECT * FROM categories WHERE categoryId=$1`, [categoryId]);
+
+        if (categories.rows.length === 0) return send.sendStatus(400);
+
+        if (stockTotal <= 0 && pricePerDay <= 0)  return send.sendStatus(400);
+
+        const nameGame = await database.query(`SELECT * FROM categories WHERE name=$1`, [name]);
+
+        if (nameGame.rows.length !== 0) return send.sendStatus(409);
+
+            res.sendStatus(201);
+    }
+    catch (e) {
+        console.log(e);
+    }
+})
 
 
 const port = process.env.PORT || 4000;
