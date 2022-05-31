@@ -1,7 +1,7 @@
 import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import database from "./database.js";
+import connection from "./database.js";
 
 const app = express();
 
@@ -11,10 +11,11 @@ dotenv.config();
 
 app.get('/categories', async (req, res) => {
     try {
-        const categories = await database.query("SELECT * FROM categories");
+        const categories = await connection.query("SELECT * FROM categories");
         res.send(categories.rows);
     }
     catch (e) {
+        res.sendStatus(500);
         console.log(e);
     }
 })
@@ -24,30 +25,32 @@ app.post('/categories', async (req, res) => {
     const { name } = req.body;
 
     try {
-        if (name === "") return res.sendStatus(400);
+        if (!name) return res.sendStatus(400);
 
-        const categories = await database.query(`SELECT * FROM categories WHERE name=$1`, [name]);
+        const categories = await connection.query(`SELECT * FROM categories WHERE name=$1`, [name]);
 
-        if (categories.rows.length !== 0) return send.sendStatus(409);
+        if (categories.rows.length !== 0) return res.sendStatus(409);
 
-        await database.query(`INSERT INTO categories (name) VALUES ($1)`, [name]);
+        await connection.query(`INSERT INTO categories (name) VALUES ($1)`, [name]);
 
         res.sendStatus(201);
     }
     catch (e) {
+        res.sendStatus(500);
         console.log(e);
     }
 })
 
 app.get('/games', async (req, res) => {
 
-    const {name} = req.query;
+    const { name } = req.query;
 
     try {
-        const games = await database.query(`SELECT * FROM games WHERE UPPER(name) LIKE UPPER($1)`, [name + "%"]);
+        const games = await connection.query(`SELECT * FROM games WHERE UPPER(name) LIKE UPPER($1)`, [name + "%"]);
         res.send(games.rows);
     }
     catch (e) {
+        res.sendStatus(500);
         console.log(e);
     }
 })
@@ -57,21 +60,25 @@ app.post('/games', async (req, res) => {
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
 
     try {
-        if (name === "") return res.sendStatus(400);
+        if (!name) return res.sendStatus(400);
 
-        const categories = await database.query(`SELECT * FROM categories WHERE categoryId=$1`, [categoryId]);
+        const categories = await connection.query(`SELECT * FROM categories WHERE id=$1`, [categoryId]);
 
-        if (categories.rows.length === 0) return send.sendStatus(400);
+        if (categories.rows.length === 0 || stockTotal <= 0 || pricePerDay <= 0) {
+            return res.sendStatus(400);
+        }
 
-        if (stockTotal <= 0 && pricePerDay <= 0)  return send.sendStatus(400);
+        const nameGame = await connection.query(`SELECT * FROM games WHERE name=$1`, [name]);
 
-        const nameGame = await database.query(`SELECT * FROM categories WHERE name=$1`, [name]);
+        if (nameGame.rows.length !== 0) return res.sendStatus(409);
 
-        if (nameGame.rows.length !== 0) return send.sendStatus(409);
+        await connection.query(`INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") 
+        VALUES ($1, $2, $3, $4, $5)`, [name, image, stockTotal, categoryId, pricePerDay]);
 
-            res.sendStatus(201);
+        res.sendStatus(201);
     }
     catch (e) {
+        res.sendStatus(500);
         console.log(e);
     }
 })
