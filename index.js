@@ -46,8 +46,13 @@ app.get('/games', async (req, res) => {
     const { name } = req.query;
 
     try {
-        const games = await connection.query(`SELECT * FROM games WHERE UPPER(name) LIKE UPPER($1)`, [name + "%"]);
-        res.send(games.rows);
+        if (name) {
+            const nameGames = await connection.query(`SELECT * FROM games WHERE UPPER(name) LIKE UPPER($1)`, [name + "%"]);
+            res.send(nameGames.rows);
+        } else {
+            const games = await connection.query(`SELECT * FROM games`);
+            res.send(games.rows);
+        }
     }
     catch (e) {
         res.sendStatus(500);
@@ -83,6 +88,24 @@ app.post('/games', async (req, res) => {
     }
 })
 
+app.get('/customers', async (req, res) => {
+
+    const { cpfCustomer } = req.query;
+
+    try {
+        if (cpfCustomer) {
+            const customersSearch = await connection.query(`SELECT * FROM customers WHERE cpf LIKE $1`, [cpfCustomer + "%"]);
+            res.send(customersSearch.rows);
+        } else {
+            const customers = await connection.query(`SELECT * FROM customers`);
+            res.send(customers.rows);
+        }
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
 
 const port = process.env.PORT || 4000;
 
