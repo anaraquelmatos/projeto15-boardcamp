@@ -26,9 +26,10 @@ app.post('/categories', async (req, res) => {
 
     const { name } = req.body;
 
-    try {
-        if (!name) return res.sendStatus(400);
+    if (!name) return res.sendStatus(400);
 
+    try {
+        
         const categories = await connection.query(`SELECT * FROM categories WHERE name=$1`, [name]);
 
         if (categories.rows.length !== 0) return res.sendStatus(409);
@@ -66,8 +67,9 @@ app.post('/games', async (req, res) => {
 
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
 
+    if (!name) return res.sendStatus(400);
+
     try {
-        if (!name) return res.sendStatus(400);
 
         const categories = await connection.query(`SELECT * FROM categories WHERE id=$1`, [categoryId]);
 
@@ -168,6 +170,50 @@ app.post('/customers', async (req, res) => {
         VALUES ($1, $2, $3, $4)`, [name, phone, cpf, birthday]);
 
         res.sendStatus(201);
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
+app.put('/customers/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, phone, cpf, birthday } = req.body;
+
+    const customerData = {
+        name,
+        phone,
+        cpf,
+        birthday
+    }
+
+    const Joi = joi.extend(DateExtension);
+
+    const customerSchema = joi.object({
+        name: joi.string().required(),
+        phone: joi.string().required().pattern(/^[0-9]{10}$|^[0-9]{11}$/),
+        cpf: joi.string().pattern(/^[0-9]{11}$/).required(),
+        birthday: Joi.date().format('YYYY-MM-DD').required()
+    });
+
+    const { error } = customerSchema.validateAsync(customerData, { abortEarly: false });
+
+    if (error) {
+        res.status(400).send(error.details.map(detail => detail.message));
+        return;
+    }
+
+    try {
+
+        const cpfCustomer = await connection.query(`SELECT * FROM customers WHERE cpf=$1`, [cpf]);
+
+        if (cpfCustomer.rows.length) return res.sendStatus(409);
+
+        await connection.query(`UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5`, 
+        [name, phone, cpf, birthday, id]);
+
+        res.sendStatus(200);
     }
     catch (e) {
         res.sendStatus(500);
