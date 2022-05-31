@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
 import DateExtension from "@joi/date";
+import dayjs from "dayjs";
 import connection from "./database.js";
 
 const app = express();
@@ -29,7 +30,7 @@ app.post('/categories', async (req, res) => {
     if (!name) return res.sendStatus(400);
 
     try {
-        
+
         const categories = await connection.query(`SELECT * FROM categories WHERE name=$1`, [name]);
 
         if (categories.rows.length !== 0) return res.sendStatus(409);
@@ -94,10 +95,10 @@ app.post('/games', async (req, res) => {
 
 app.get('/customers', async (req, res) => {
 
-    const { cpfCustomer } = req.query;
+    const { cpf } = req.query;
 
     try {
-        if (cpfCustomer) {
+        if (cpf) {
             const customersSearch = await connection.query(`SELECT * FROM customers WHERE cpf LIKE $1`, [cpfCustomer + "%"]);
             res.send(customersSearch.rows);
         } else {
@@ -210,10 +211,44 @@ app.put('/customers/:id', async (req, res) => {
 
         if (cpfCustomer.rows.length) return res.sendStatus(409);
 
-        await connection.query(`UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5`, 
-        [name, phone, cpf, birthday, id]);
+        await connection.query(`UPDATE customers SET name=$1, phone=$2, cpf=$3, birthday=$4 WHERE id=$5`,
+            [name, phone, cpf, birthday, id]);
 
         res.sendStatus(200);
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
+app.post('/rentals', async (req, res) => {
+
+    const { customerId, gameId, daysRented } = req.body;
+
+    const rentDate = dayjs().format('YYYY-MM-DD');
+
+    const originalPrice = daysRented * 3;
+
+    const returnDate = null;
+
+    const delayFee = null;
+
+    try {
+
+        const customer = await connection.query(`SELECT * FROM customers WHERE id=$1`, [customerId]);
+
+        if (customer.rows.length === 0) return sendStatus(400);
+
+        const game = await connection.query(`SELECT * FROM games WHERE id=$1`, [gameId]);
+
+        if (game.rows.length === 0) return sendStatus(400);
+
+        await connection.query(`INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice",
+        "delayFee","returnDate") 
+        VALUES ($1,$2, $3, $4, $5, $6, $7)`, [customerId, gameId, daysRented, rentDate, originalPrice, delayFee, returnDate]);
+
+        res.sendStatus(201);
     }
     catch (e) {
         res.sendStatus(500);
