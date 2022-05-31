@@ -314,6 +314,12 @@ app.post('/rentals', async (req, res) => {
 
         if (game.rows.length === 0) return sendStatus(400);
 
+        const rentals = await connection.query(`SELECT "returnDate" FROM rentals WHERE id=$1 AND "returnDate" IS NULL`, [gameId]);
+
+        if (rentals.rows.length >= game.rows[0].stockTotal) {
+            return res.sendStatus(400);
+        }
+
         const originalPrice = daysRented * game.rows[0].pricePerDay;
 
         if (daysRented <= 0) return sendStatus(400);
@@ -348,24 +354,24 @@ app.post('/rentals/:id/return', async (req, res) => {
             return;
         }
 
-        const {rentDate, daysRented, gameId} = idRental.rows[0];
+        const { rentDate, daysRented, gameId } = idRental.rows[0];
         const dataRentDate = new Date(rentDate);
         const sumDate = new Date(dataRentDate.setDate(dataRentDate.getDate() + parseInt(daysRented)));
         const delay = null;
 
-        if(sumDate > dataRentDate){
+        if (sumDate > dataRentDate) {
             const total = Math.abs(dataRentDate - sumDate);
-            delay = parseInt(total/(1000 * 3600 * 24));
+            delay = parseInt(total / (1000 * 3600 * 24));
         }
 
         const idGame = await connection.query(`SELECT * FROM games WHERE id=$1`, [gameId]);
 
-        const {pricePerDay} = idGame.rows[0];
+        const { pricePerDay } = idGame.rows[0];
 
         const delayFee = pricePerDay * delay;
 
         await connection.query(`UPDATE rentals SET "returnDate"=$1, "delayFee"=$2 WHERE id=$3`,
-        [returnDate, delayFee, id]);
+            [returnDate, delayFee, id]);
 
         res.sendStatus(200);
     }
