@@ -51,10 +51,13 @@ app.get('/games', async (req, res) => {
 
     try {
         if (name) {
-            const nameGames = await connection.query(`SELECT * FROM games WHERE UPPER(name) LIKE UPPER($1)`, [name + "%"]);
+            const nameGames = await connection.query(`SELECT games.*, categories.name as "categoryName" FROM games
+            JOIN categories ON categories.id = games."categoryId"
+            WHERE UPPER(games.name) LIKE UPPER($1)`, [name + "%"]);
             res.send(nameGames.rows);
         } else {
-            const games = await connection.query(`SELECT * FROM games`);
+            const games = await connection.query(`SELECT games.*, categories.name as "categoryName" FROM games
+            JOIN categories ON categories.id = games."categoryId"`);
             res.send(games.rows);
         }
     }
