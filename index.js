@@ -1,6 +1,8 @@
 import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import joi from "joi";
+import DateExtension from "@joi/date";
 import connection from "./database.js";
 
 const app = express();
@@ -118,10 +120,54 @@ app.get('/customers/:id', async (req, res) => {
 
             res.send(customers.rows);
 
-        }else{
+        } else {
             res.sendStatus(404);
         }
-        
+
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
+app.post('/customers', async (req, res) => {
+
+    const { name, phone, cpf, birthday } = req.body;
+
+    const customerData = {
+        name,
+        phone,
+        cpf,
+        birthday
+    }
+
+    const Joi = joi.extend(DateExtension);
+
+    const customerSchema = joi.object({
+        name: joi.string().required(),
+        phone: joi.string().required().pattern(/^[0-9]{10}$|^[0-9]{11}$/),
+        cpf: joi.string().pattern(/^[0-9]{11}$/).required(),
+        birthday: Joi.date().format('YYYY-MM-DD').required()
+    });
+
+    const { error } = customerSchema.validateAsync(customerData, { abortEarly: false });
+
+    if (error) {
+        res.status(400).send(error.details.map(detail => detail.message));
+        return;
+    }
+
+    try {
+
+        const cpfCustomer = await connection.query(`SELECT * FROM customers WHERE cpf=$1`, [cpf]);
+
+        if (cpfCustomer.rows.length) return res.sendStatus(409);
+
+        await connection.query(`INSERT INTO customers (name, phone, cpf, birthday) 
+        VALUES ($1, $2, $3, $4)`, [name, phone, cpf, birthday]);
+
+        res.sendStatus(201);
     }
     catch (e) {
         res.sendStatus(500);
