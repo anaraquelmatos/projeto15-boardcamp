@@ -228,8 +228,6 @@ app.post('/rentals', async (req, res) => {
 
     const rentDate = dayjs().format('YYYY-MM-DD');
 
-    const originalPrice = daysRented * 3;
-
     const returnDate = null;
 
     const delayFee = null;
@@ -244,6 +242,10 @@ app.post('/rentals', async (req, res) => {
 
         if (game.rows.length === 0) return sendStatus(400);
 
+        const originalPrice = daysRented * game.rows[0].pricePerDay;
+
+        if (daysRented <= 0) return sendStatus(400);
+
         await connection.query(`INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice",
         "delayFee","returnDate") 
         VALUES ($1,$2, $3, $4, $5, $6, $7)`, [customerId, gameId, daysRented, rentDate, originalPrice, delayFee, returnDate]);
@@ -255,6 +257,30 @@ app.post('/rentals', async (req, res) => {
         console.log(e);
     }
 })
+
+app.delete('/rentals/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const idRental = await connection.query(`SELECT * FROM rentals WHERE id=$1`, [id]);
+
+        if (idRental.rows.length === 0) {
+            res.sendStatus(404);
+            return;
+        }
+        if (idRental.rows[0].returnDate) {
+            res.sendStatus(400);
+            return;
+        }
+        
+        await connection.query(`DELETE FROM rentals WHERE id=$1`, [id]);
+
+        res.sendStatus(200);
+
+    } catch (e) {
+        console.log(e);
+    }
+});
 
 const port = process.env.PORT || 4000;
 
