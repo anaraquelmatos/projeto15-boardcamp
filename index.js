@@ -107,6 +107,28 @@ app.get('/customers', async (req, res) => {
     }
 })
 
+app.get('/customers/:id', async (req, res) => {
+
+    const { id } = req.params;
+
+    try {
+        const customers = await connection.query(`SELECT * FROM customers WHERE id = $1`, [id]);
+
+        if (customers.rows.length !== 0) {
+
+            res.send(customers.rows);
+
+        }else{
+            res.sendStatus(404);
+        }
+        
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
 const port = process.env.PORT || 4000;
 
 app.listen(port, () => {
