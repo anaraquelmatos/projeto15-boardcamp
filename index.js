@@ -222,6 +222,75 @@ app.put('/customers/:id', async (req, res) => {
     }
 })
 
+app.get('/rentals', async (req, res) => {
+
+    const { customerId, gameId } = req.query;
+
+    let rentals;
+
+    try {
+        if (customerId) {
+            rentals = await connection.query(`    
+            SELECT rentals.*, customers.name as "customersName", games.name as "gameName", games."categoryId",
+            categories.name as "categoryName"
+            FROM rentals
+            JOIN customers ON customers.id = rentals."customerId" 
+            JOIN games ON games.id = rentals."gameId" 
+            JOIN categories ON categories.id = games."categoryId" 
+            WHERE rentals."customerId" = $1`, [customerId]);
+        } else if (gameId) {
+            rentals = await connection.query(`    
+            SELECT rentals.*, customers.name as "customersName", games.name as "gameName", games."categoryId",
+            categories.name as "categoryName"
+            FROM rentals
+            JOIN customers ON customers.id = rentals."customerId" 
+            JOIN games ON games.id = rentals."gameId" 
+            JOIN categories ON categories.id = games."categoryId" 
+            WHERE rentals."gameId" = $1`, [gameId]);
+        } else {
+            rentals = await connection.query(`    
+            SELECT rentals.*, customers.name as "customersName", games.name as "gameName", games."categoryId",
+            categories.name as "categoryName"
+            FROM rentals
+            JOIN customers ON customers.id = rentals."customerId" 
+            JOIN games ON games.id = rentals."gameId" 
+            JOIN categories ON categories.id = games."categoryId"`);
+        }
+
+        let allInfos = rentals.rows;
+        const array = [];
+
+        for (let allInfo of allInfos) {
+            allInfo = {
+                ...allInfo,
+                customers: {
+                    id: allInfo.customerId,
+                    name: allInfo.customersName
+                },
+                games: {
+                    id: allInfo.gameId,
+                    name: allInfo.gameName,
+                    categoryId: allInfo.categoryId,
+                    categoryName: allInfo.categoryName
+                }
+            }
+
+            delete allInfo.customersName;
+            delete allInfo.gameName;
+            delete allInfo.categoryId;
+            delete allInfo.categoryName;
+
+            array.push(allInfo);
+        }
+
+        res.status(200).send(array);
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
 app.post('/rentals', async (req, res) => {
 
     const { customerId, gameId, daysRented } = req.body;
@@ -272,7 +341,7 @@ app.delete('/rentals/:id', async (req, res) => {
             res.sendStatus(400);
             return;
         }
-        
+
         await connection.query(`DELETE FROM rentals WHERE id=$1`, [id]);
 
         res.sendStatus(200);
