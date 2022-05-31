@@ -327,6 +327,51 @@ app.post('/rentals', async (req, res) => {
     }
 })
 
+app.post('/rentals/:id/return', async (req, res) => {
+
+    const { id } = req.params;
+    const returnDate = dayjs().format('YYYY-MM-DD');
+
+
+    try {
+        const idRental = await connection.query(`SELECT * FROM rentals WHERE id=$1`, [id]);
+
+        if (idRental.rows.length === 0) {
+            res.sendStatus(404);
+            return;
+        }
+        if (idRental.rows[0].returnDate !== null) {
+            res.sendStatus(400);
+            return;
+        }
+
+        const {rentDate, daysRented, gameId} = idRental.rows[0];
+        const dataRentDate = new Date(rentDate);
+        const sumDate = new Date(dataRentDate.setDate(dataRentDate.getDate() + parseInt(daysRented)));
+        const delay = null;
+
+        if(sumDate > dataRentDate){
+            const total = Math.abs(dataRentDate - sumDate);
+            delay = parseInt(total/(1000 * 3600 * 24));
+        }
+
+        const idGame = await connection.query(`SELECT * FROM games WHERE id=$1`, [gameId]);
+
+        const {pricePerDay} = idGame.rows[0];
+
+        const delayFee = pricePerDay * delay;
+
+        await connection.query(`UPDATE rentals SET "returnDate"=$1, "delayFee"=$2 WHERE id=$3`,
+        [returnDate, delayFee, id]);
+
+        res.sendStatus(200);
+    }
+    catch (e) {
+        res.sendStatus(500);
+        console.log(e);
+    }
+})
+
 app.delete('/rentals/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -337,7 +382,7 @@ app.delete('/rentals/:id', async (req, res) => {
             res.sendStatus(404);
             return;
         }
-        if (idRental.rows[0].returnDate) {
+        if (idRental.rows[0].returnDate === null) {
             res.sendStatus(400);
             return;
         }
