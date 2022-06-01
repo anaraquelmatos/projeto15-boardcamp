@@ -83,12 +83,13 @@ export async function postRentals(req, res){
     try {
 
         const customer = await connection.query(`SELECT * FROM customers WHERE id=$1`, [customerId]);
-
-        if (customer.rows.length === 0) return sendStatus(400);
-
+        
+        if (customer.rows.length === 0) return res.sendStatus(400);
+        
         const game = await connection.query(`SELECT * FROM games WHERE id=$1`, [gameId]);
-
-        if (game.rows.length === 0) return sendStatus(400);
+        
+        if (game.rows.length === 0) return res.sendStatus(400);
+        
 
         const rentals = await connection.query(`SELECT "returnDate" FROM rentals WHERE id=$1 AND "returnDate" IS NULL`, [gameId]);
 
@@ -98,7 +99,7 @@ export async function postRentals(req, res){
 
         const originalPrice = daysRented * game.rows[0].pricePerDay;
 
-        if (daysRented <= 0) return sendStatus(400);
+        if (daysRented <= 0) return res.sendStatus(400);
 
         await connection.query(`INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice",
         "delayFee","returnDate") 
